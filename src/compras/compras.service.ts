@@ -1,6 +1,6 @@
-import { Injectable, Inject } from '@nestjs/common'
+import { Injectable, Inject, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, In } from 'typeorm'
+import { Repository, In, FindOptionsWhere } from 'typeorm'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 
@@ -20,12 +20,13 @@ export class ComprasService {
 
   async registrarCompra(dados: CreateCompraDto, clienteId: number): Promise<Compra> {
     const cliente = await this.clienteRepo.findOneBy({ id: clienteId })
-    if (!cliente) throw new Error('Cliente não encontrado.')
+    if (!cliente) throw new NotFoundException(`Cliente com ID ${clienteId} não encontrado`)
 
     const produtos = await this.produtoRepo.findBy({ id: In(dados.produtos) })
-    if (!produtos.length) throw new Error('Produtos não encontrados.')
+    if (produtos.length !== dados.produtos.length) 
+      throw new NotFoundException('Um ou mais produtos não foram encontrados')
 
-    const total = produtos.reduce((soma, p) => soma + p.preco, 0)
+    const total = produtos.reduce((soma, produto) => soma + produto.preco, 0)
 
     const novaCompra = this.compraRepo.create({
       clienteId,
@@ -35,8 +36,7 @@ export class ComprasService {
     })
 
     const compraSalva = await this.compraRepo.save(novaCompra)
-
-    await this.cache.del(`compras-cliente-${clienteId}`)
+    await this.limparCacheCliente(clienteId)
 
     return compraSalva
   }
@@ -47,13 +47,19 @@ export class ComprasService {
 
     if (comprasEmCache) return comprasEmCache
 
+    const filtro: FindOptionsWhere<Compra> = { clienteId }
     const compras = await this.compraRepo.find({
-      where: { clienteId },
+      where: filtro,
       relations: ['produtos'],
     })
 
     await this.cache.set(cacheKey, compras, 60000)
 
     return compras
+  }
+
+  private async limparCacheCliente(clienteId: number): Promise<void> {
+    const cacheKey = `compras-cliente-${clienteId}`
+    await this.cache.del(cacheKey)
   }
 }

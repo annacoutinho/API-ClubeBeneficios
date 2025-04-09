@@ -5,6 +5,18 @@ import { Compra } from '../compras/entities/compra.entity'
 import { Cache } from 'cache-manager'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 
+interface ProdutoRelatorio {
+  id: number
+  nome: string
+  preco: number
+}
+
+interface RelatorioVendas {
+  produto: string
+  totalVendas: number
+  totalValor: number
+}
+
 @Injectable()
 export class RelatoriosService {
   constructor(
@@ -15,16 +27,22 @@ export class RelatoriosService {
     private cache: Cache,
   ) {}
 
-  async gerarRelatorioVendas() {
+  async gerarRelatorioVendas(): Promise<Record<number, RelatorioVendas>> {
     const cacheKey = 'relatorio-vendas'
-    const emCache = await this.cache.get(cacheKey)
-    if (emCache) return emCache
+    const emCache =
+      await this.cache.get<Record<number, RelatorioVendas>>(cacheKey)
 
-    const compras = await this.compraRepo.find({ relations: ['produtos'] })
+    if (emCache) {
+      return emCache
+    }
+
+    const compras = await this.compraRepo.find({
+      relations: ['produtos'],
+    })
 
     const relatorio = compras.reduce(
-      (dados, compra) => {
-        compra.produtos.forEach((produto) => {
+      (dados: Record<number, RelatorioVendas>, compra) => {
+        compra.produtos.forEach((produto: ProdutoRelatorio) => {
           if (!dados[produto.id]) {
             dados[produto.id] = {
               produto: produto.nome,
@@ -37,7 +55,7 @@ export class RelatoriosService {
         })
         return dados
       },
-      {} as Record<number, any>,
+      {} as Record<number, RelatorioVendas>,
     )
 
     await this.cache.set(cacheKey, relatorio, 60000)

@@ -2,41 +2,47 @@ import {
   ConflictException,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common'
-import * as bcrypt from 'bcrypt'
-
-import { ClientesRepository } from './repositories/clientes.repository'
-import { CreateClienteDto } from './dto/create-cliente.dto'
-import { Cliente, TipoUsuario } from './entities/cliente.entity'
-
-@Injectable()
-export class ClientesService {
-  constructor(private readonly clientesRepo: ClientesRepository) {}
-
-  async findAll(tipoUsuario: TipoUsuario): Promise<Cliente[]> {
-    if (tipoUsuario !== TipoUsuario.ADMIN) {
-      throw new UnauthorizedException('Apenas administradores podem ver todos os clientes.')
+ } from '@nestjs/common'
+ import * as bcrypt from 'bcrypt'
+ 
+ import { ClientesRepository } from './repositories/clientes.repository'
+ import { CreateClienteDto } from './dto/create-cliente.dto'
+ import { Cliente, TipoUsuario } from './entities/cliente.entity'
+ 
+ export interface ClientesServiceInterface {
+  listarClientes(tipo: TipoUsuario): Promise<Cliente[]>
+  buscarCliente(email: string): Promise<Cliente | null>
+  cadastrarCliente(dados: CreateClienteDto): Promise<Cliente>
+ }
+ 
+ @Injectable()
+ export class ClientesService implements ClientesServiceInterface {
+  constructor(private clientesRepo: ClientesRepository) {}
+ 
+  async listarClientes(tipo: TipoUsuario): Promise<Cliente[]> {
+    if (tipo !== TipoUsuario.ADMIN) {
+      throw new UnauthorizedException('Somente admins podem acessar esta lista')
     }
-
+ 
     return this.clientesRepo.findAll()
   }
-
-  async findByEmail(email: string): Promise<Cliente | null> {
+ 
+  async buscarCliente(email: string): Promise<Cliente | null> {
     return this.clientesRepo.findByEmail(email)
   }
-
-  async create(data: CreateClienteDto): Promise<Cliente> {
-    const clienteExistente = await this.clientesRepo.findByEmail(data.email)
-
-    if (clienteExistente) {
-      throw new ConflictException('Este e-mail já está em uso.')
+ 
+  async cadastrarCliente(dados: CreateClienteDto): Promise<Cliente> {
+    const jaExiste = await this.clientesRepo.findByEmail(dados.email)
+ 
+    if (jaExiste) {
+      throw new ConflictException('Email já está sendo usado')
     }
-
-    const senhaCriptografada = await bcrypt.hash(data.senha, 10)
-
+ 
+    const senhaSegura = await bcrypt.hash(dados.senha, 10)
+ 
     return this.clientesRepo.create({
-      ...data,
-      senha: senhaCriptografada,
+      ...dados,
+      senha: senhaSegura,
     })
   }
-}
+ }

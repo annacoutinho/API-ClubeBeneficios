@@ -9,13 +9,12 @@ export class ComprasController {
   constructor(private readonly comprasService: ComprasService) {}
 
   @Post()
-  async criar(@Body() dados: CreateCompraDto) {
+  async registrarCompra(@Body() dados: CreateCompraDto) {
     return this.comprasService.registrarCompra(dados, dados.clienteId)
   }
-
   @UseGuards(JwtAuthGuard)
   @Get()
-  async minhasCompras(@CurrentUser() usuario: any) {
-    return this.comprasService.listarComprasPorCliente(usuario.id)
+  async listarCompras(@CurrentUser() user) {
+    return this.comprasService.listarComprasPorCliente(user.id)
   }
 }

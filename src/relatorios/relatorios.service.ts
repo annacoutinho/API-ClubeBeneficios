@@ -5,13 +5,13 @@ import { Compra } from '../compras/entities/compra.entity'
 import { Cache } from 'cache-manager'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 
-interface ProdutoRelatorio {
+ export interface ProdutoRelatorio {
   id: number
   nome: string
   preco: number
 }
 
-interface RelatorioVendas {
+export interface RelatorioVendas {
   produto: string
   totalVendas: number
   totalValor: number

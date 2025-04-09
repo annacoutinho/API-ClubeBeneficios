@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { RelatoriosController } from '../relatorios.controller'
 import { RelatoriosService } from '../relatorios.service'
+import { RelatorioVendas } from '../relatorios.service'
 
 describe('RelatoriosController', () => {
   let controller: RelatoriosController
@@ -13,9 +14,13 @@ describe('RelatoriosController', () => {
         {
           provide: RelatoriosService,
           useValue: {
-            gerarRelatorioVendas: jest
-              .fn()
-              .mockResolvedValue('Relatório gerado com sucesso'),
+            gerarRelatorioVendas: jest.fn().mockResolvedValue({
+              1: {
+                produto: 'Produto Teste',
+                totalVendas: 10,
+                totalValor: 1000,
+              },
+            }),
           },
         },
       ],
@@ -25,9 +30,29 @@ describe('RelatoriosController', () => {
     service = module.get<RelatoriosService>(RelatoriosService)
   })
 
-  it('deve retornar o relatório de vendas', async () => {
-    const resultado = await controller.gerarRelatorio()
-    expect(resultado).toBe('Relatório gerado com sucesso')
-    expect(service.gerarRelatorioVendas).toHaveBeenCalled()
+  describe('obterRelatorioConsolidadoDeVendas', () => {
+    it('deve retornar o relatório de vendas no formato correto', async () => {
+      const mockRelatorio: Record<number, RelatorioVendas> = {
+        1: {
+          produto: 'Produto Teste',
+          totalVendas: 10,
+          totalValor: 1000,
+        },
+      }
+
+      jest
+        .spyOn(service, 'gerarRelatorioVendas')
+        .mockResolvedValue(mockRelatorio)
+
+      const resultado = await controller.obterRelatorioConsolidadoDeVendas()
+
+      expect(resultado).toEqual(mockRelatorio)
+      expect(service.gerarRelatorioVendas).toHaveBeenCalled()
+    })
+
+    it('deve chamar o serviço corretamente', async () => {
+      await controller.obterRelatorioConsolidadoDeVendas()
+      expect(service.gerarRelatorioVendas).toHaveBeenCalledTimes(1)
+    })
   })
 })

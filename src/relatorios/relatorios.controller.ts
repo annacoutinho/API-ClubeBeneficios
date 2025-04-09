@@ -1,12 +1,14 @@
 import { Controller, Get } from '@nestjs/common';
-import { RelatoriosService } from './relatorios.service';
+import { RelatoriosService, RelatorioVendas } from './relatorios.service';
 
 @Controller('relatorios')
 export class RelatoriosController {
-  constructor(private relatoriosService: RelatoriosService) {}
+  constructor(
+    private readonly relatorioService: RelatoriosService
+  ) {}
 
   @Get('vendas')
-  gerarRelatorio() {
-    return this.relatoriosService.gerarRelatorioVendas();
+  async obterRelatorioConsolidadoDeVendas(): Promise<Record<number, RelatorioVendas>> {
+    return this.relatorioService.gerarRelatorioVendas();
   }
 }
